@@ -1,6 +1,7 @@
-package com.example.compose.ui.theme.screens
+package com.example.compose.presentation.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.outlined.Create
@@ -36,6 +38,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,14 +48,20 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.compose.viewmodel.NotesViewModel
 import kotlinx.coroutines.launch
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotesHomeScreen(navController: NavController) {
-    val itemsList = List(50) { "This is some note item $it" }
+fun NotesHomeScreen(navController: NavController, viewModel: NotesViewModel = hiltViewModel()) {
+    val notes by viewModel.notes.collectAsState(initial = emptyList())
+    val selectedNotes by viewModel.selectedNotes.collectAsState()
+    val selectionMode = selectedNotes.isNotEmpty()
+
+
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
@@ -67,28 +77,45 @@ fun NotesHomeScreen(navController: NavController) {
                 )
                 ActionRow(
                     "Notes",
-                    Icons.Outlined.Create)
+                    Icons.Outlined.Create
+                )
                 ActionRow(
                     "Archived",
-                    Icons.Outlined.Done)
+                    Icons.Outlined.Done
+                )
                 ActionRow(
                     "Recycle Bin",
-                    Icons.Default.Delete)
+                    Icons.Default.Delete
+                )
             }
         }
-    )  {
+    ) {
         Scaffold(
             topBar = {
                 TopAppBar(
-
+                    actions = {
+                        if (selectionMode) {
+                            IconButton(onClick = { viewModel.deleteSelected() }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete")
+                            }
+                        }
+                    },
                     title = { Text("Composer") },
                     navigationIcon = {
-                        IconButton(onClick = {
-                            scope.launch { drawerState.open() }   // ✅ Opens the drawer
-                        }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Menu")
+                        if (selectionMode) {
+                            IconButton(onClick = { viewModel.clearSelection() }) {
+                                Icon(Icons.Default.Close, contentDescription = "Cancel")
+                            }
+                        } else {
+
+                            IconButton(onClick = {
+                                scope.launch { drawerState.open() }   // ✅ Opens the drawer
+                            }) {
+                                Icon(Icons.Default.Menu, contentDescription = "Menu")
+                            }
                         }
                     }
+
 
                 )
             },
@@ -97,7 +124,7 @@ fun NotesHomeScreen(navController: NavController) {
                     onClick = {
                         navController.navigate("details")
                     }) {
-                    Icon(Icons.Default.Add, contentDescription = "Add");
+                    Icon(Icons.Default.Add, contentDescription = "Add")
 
                 }
             },
@@ -117,7 +144,7 @@ fun NotesHomeScreen(navController: NavController) {
                     bottom = innerPadding.calculateBottomPadding() + 16.dp
                 )
             ) {
-                items(itemsList.size) { idx ->
+                items(notes.size) { idx ->
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -125,7 +152,13 @@ fun NotesHomeScreen(navController: NavController) {
                             .clip(
                                 RoundedCornerShape(12.dp)
                             )
-                            .background(color = MaterialTheme.colorScheme.surfaceVariant),
+                            .background(color = MaterialTheme.colorScheme.surfaceVariant)
+                            .combinedClickable(
+                                onClick = { navController.navigate("details") },
+                                onLongClick = {
+                                    viewModel.toggleSelection(notes[idx].id)
+                                }
+                            ),
 
                         // square-ish cards
                         //                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
@@ -140,14 +173,14 @@ fun NotesHomeScreen(navController: NavController) {
                             ) {
                             Column {
                                 Text(
-                                    text = "Heading",
+                                    text = notes[idx].title,
                                     maxLines = 2, overflow = TextOverflow.Ellipsis,
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                                 )
 
                                 Spacer(modifier = Modifier.height(12.dp))
                                 Text(
-                                    text = itemsList[idx],
+                                    text = notes[idx].content,
                                     overflow = TextOverflow.Ellipsis,
                                     style = MaterialTheme.typography.bodyMedium
                                 )
@@ -171,10 +204,11 @@ fun ActionRow(
     Row(
         Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
-    ) { Icon(
-   icon,
-        contentDescription = title,Modifier.size(24.dp)
-    )
+    ) {
+        Icon(
+            icon,
+            contentDescription = title, Modifier.size(24.dp)
+        )
         Spacer(Modifier.width(16.dp))
         Text(title)
     }

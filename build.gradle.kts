@@ -6,7 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.compose) apply false
 
     // hilt and dagger
-    id("com.google.devtools.ksp") version "2.0.21-1.0.25"
+    id("com.google.devtools.ksp") version "2.2.10-2.0.2"
 
-    id("com.google.dagger.hilt.android") version "2.57.1" apply false
+    id("com.google.dagger.hilt.android") version "2.57.2" apply false
 }
